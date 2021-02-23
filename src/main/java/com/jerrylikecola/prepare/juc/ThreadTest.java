@@ -39,6 +39,8 @@ public class ThreadTest {
      * >>>ThreadLocal<<<
      * 线程本地储存
      * 牺牲空间换时间
+     * 长生命周期对象Thread持有短生命周期对象ThreadLocal引用导致其无法及时回收造成内存泄漏
+     * 其本身的setEntry()和getEntry方法遇到null后会将value设置成null，也可以调用remove()方法来避免
      */
 
     /**
