@@ -44,6 +44,14 @@ public class ThreadTest {
      */
 
     /**
+     * >>>Thread.start()线程是怎么启动的<<<
+     * start() -> start0()[JNI方法] -> JVM_StartThread -> new JavaThread -> thread_entry -> Thread::start
+     * 并行的os::create_thread -> os::start_thread
+     * os::create_thread -> pthread_create -> 调用操作系统的clone的方法
+     * 最后会调用javaThread::run()进行回调调用run()方法
+     */
+
+    /**
      * 多线程打印ABC
      * @throws InterruptedException
      */
