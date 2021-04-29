@@ -1,5 +1,8 @@
 package com.jerrylikecola.prepare.juc;
 
+import org.junit.jupiter.api.Test;
+
+import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -40,5 +43,12 @@ public class CountDownLatchTest {
             countDownLatch.countDown();
             System.out.println(Thread.currentThread().getName() + ":我去救爷爷了!");
         }
+    }
+
+    @Test
+    public void test() throws InterruptedException {
+        System.out.println(new Date());
+        new CountDownLatch(1).await();
+        System.out.println(new Date());
     }
 }

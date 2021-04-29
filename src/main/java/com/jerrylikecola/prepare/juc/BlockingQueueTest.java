@@ -34,39 +34,5 @@ public class BlockingQueueTest {
      * >>>LinkedBlockingDeque<<<
      */
     public static void main(String[] args) {
-        // >>>测试手写的阻塞队列<<<
-        JerryBlockingQueue queue = new JerryBlockingQueue();
-
-        // 插入
-        new Thread(() -> {
-            for (int i = 0; i < 11; i++) {
-                queue.put(i);
-                System.out.println(Thread.currentThread().getName() + " add了第 " + i + " 个值");
-            }
-            try {
-                Thread.sleep(4000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            for (int i = 0; i < 1; i++) {
-                queue.put(i);
-                System.out.println(Thread.currentThread().getName() + " add了第 " + (11 + i) + " 个值");
-            }
-        }).start();
-
-        // 取出
-        new Thread(() -> {
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            for (int i = 0; i < 12; i++) {
-                queue.take();
-                System.out.println(Thread.currentThread().getName() + " 取出了第 " + i + " 个值");
-            }
-
-        }).start();
-
     }
 }

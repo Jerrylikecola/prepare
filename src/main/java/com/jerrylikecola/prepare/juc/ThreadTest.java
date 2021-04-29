@@ -1,9 +1,15 @@
 package com.jerrylikecola.prepare.juc;
 
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Test;
 
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author xiaxiang
@@ -25,9 +31,6 @@ public class ThreadTest {
         new Thread(new Thread2()).start();
         Object call = new Thread3().call();
         log.info(String.valueOf(call));
-
-        // 多线程打印ABC
-        printABC();
     }
     /**
      * >>>如何在两个线程中共享数据<<<
@@ -53,52 +56,127 @@ public class ThreadTest {
 
     /**
      * 多线程打印ABC
+     *
      * @throws InterruptedException
      */
-    public static void printABC() throws InterruptedException {
-        Semaphore lockA = new Semaphore(1);
-        Semaphore lockB = new Semaphore(1);
-        Semaphore lockC = new Semaphore(1);
-
-
-        lockA.acquire();
-        lockB.acquire();
-        lockC.acquire();
-        lockA.release();
+    @Test
+    public void printABC() {
+        AtomicInteger str = new AtomicInteger(1);
         new Thread(() -> {
-            for (int i = 0; i < 10; i++) {
-                try {
-                    lockA.acquire();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            int count = 10;
+            while (count > 0) {
+                if (str.get() == 1) {
+                    System.out.print("A");
+                    str.set(2);
+                    count--;
                 }
-                System.out.print("A");
-                lockB.release();
             }
         }).start();
         new Thread(() -> {
-            for (int i = 0; i < 10; i++) {
-                try {
-                    lockB.acquire();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            int count = 10;
+            while (count > 0) {
+                if (str.get() == 2) {
+                    System.out.print("B");
+                    str.set(3);
+                    count--;
                 }
-                System.out.print("B");
-                lockC.release();
             }
         }).start();
         new Thread(() -> {
-            for (int i = 0; i < 10; i++) {
-                try {
-                    lockC.acquire();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            int count = 10;
+            while (count > 0) {
+                if (str.get() == 3) {
+                    System.out.print("C");
+                    str.set(1);
+                    count--;
                 }
-                System.out.print("C");
-                lockA.release();
             }
         }).start();
     }
+
+    class PrintChar implements Runnable {
+        private Object own;
+        private Object pre;
+        private String str;
+
+        public PrintChar(Object own, Object pre, String str) {
+            this.own = own;
+            this.pre = pre;
+            this.str = str;
+        }
+
+        @Override
+        public void run() {
+            for (int i = 0; i < 10; i++) {
+                synchronized (pre) {
+                    synchronized (own) {
+                        System.out.print(str);
+                        own.notifyAll();
+                    }
+                    try {
+                        pre.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testABC() throws InterruptedException {
+        printABC();
+    }
+
+    @Test
+    public void printABC1() throws InterruptedException {
+        Object a = new Object();
+        Object b = new Object();
+        Object c = new Object();
+
+        new Print(c, a, "A").start();
+        Thread.sleep(100);
+        new Print(a, b, "B").start();
+        Thread.sleep(100);
+        new Print(b, c, "C").start();
+
+    }
+
+    class Print extends Thread {
+        private Object pre;
+        private Object own;
+        private String print;
+
+        public Print(Object pre, Object own, String print) {
+            this.pre = pre;
+            this.own = own;
+            this.print = print;
+        }
+
+        @Override
+        public void run() {
+            for (int i = 0; i < 10; i++) {
+                synchronized (pre) {
+                    synchronized (own) {
+                        System.out.print(print);
+                        own.notifyAll();
+//                        try {
+//                            pre.wait();
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        }
+                    }
+                    try {
+                        pre.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+        }
+    }
+
 
     static class Thread1 extends Thread {
         @Override
@@ -108,7 +186,6 @@ public class ThreadTest {
     }
 
     static class Thread2 implements Runnable {
-
         @Override
         public void run() {
             log.info("sb");
@@ -116,10 +193,59 @@ public class ThreadTest {
     }
 
     static class Thread3 implements Callable {
-
         @Override
         public Object call() throws Exception {
             return "sb";
+        }
+    }
+
+    @Test
+    public void testThreadLocal(){
+        new Local(1).start();
+        new Local(2).start();
+    }
+
+    class Local extends Thread{
+        private ThreadLocal<Integer> threadLocal = new ThreadLocal<>();
+
+        private int name;
+
+        public Local(Integer name) {
+            this.name = name;
+        }
+
+        @Override
+        public void run() {
+            threadLocal.set(name);
+            System.out.println(threadLocal.get());
+        }
+    }
+
+    @Test
+    public void testLocal() throws InterruptedException {
+
+        new Thread(()->{
+                TestLocal testLocal = new TestLocal(1);
+        System.out.println(testLocal.get());
+        }).start();
+
+        Thread.sleep(1000);
+        new Thread(()->{
+            TestLocal testLocal = new TestLocal(2);
+            System.out.println(testLocal.get());
+        }).start();
+    }
+
+    class TestLocal{
+        private ThreadLocal<Integer> threadLocal = new ThreadLocal<>();
+
+        public TestLocal(int i) {
+            threadLocal.set(i);
+        }
+
+        public int get(){
+            System.out.println(Thread.currentThread().getName());
+            return threadLocal.get();
         }
     }
 
